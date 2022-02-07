@@ -1,0 +1,122 @@
+\documentclass[uplatex]{jsarticle}
+
+\usepackage[japanese]{babel}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{physics}
+\usepackage{url}
+\usepackage{siunitx}
+
+\title{多重振り子}
+\author{中山 大樹}
+
+\begin{document}
+\maketitle
+
+\section{2次元単振り子をラグランジュ未定乗数法で解く}
+
+質量$m$[\si{kg}]の質点が伸び縮みしない剛体棒で繋がれている状況を考える。
+重力の向きを$-y$方向にとり、重力加速度を$g$とする。
+
+振り子の根本の座標を$(x_0(t), y_0(t))$、質点の座標を$(x_1(t), y_1(t))$とする。
+
+拘束条件は
+\begin{align}
+    \qty(x_1 - x_0)^2 + \qty(y_1 - y_0)^2 = l^2  \label{2d_single_cons}
+\end{align}
+ただし$l$[\si{m}]は剛体棒の長さ。
+
+拘束条件込みのラグランジアンは\cite{a}を参考にすると
+\begin{align}
+    L = \frac{1}{2} m \qty(\dot{x}_1^2 + \dot{y}_1^2) - mgy_1
+        - \lambda \qty(\qty(x_1 - x_0)^2 + \qty(y_1 - y_0)^2 - l^2)
+\end{align}
+となる。
+オイラーラグランジュの運動方程式を
+\begin{align}
+    \dv{}{t}\pdv{L}{\dot{q}} - \pdv{L}{q} = 0
+\end{align}
+より求めておくと
+\begin{align}
+\begin{cases}
+    m \ddot{x}_1 = -2\lambda\qty(x_1 - x_0) \\
+    m \ddot{y}_1 = -2\lambda\qty(y_1 - y_0) - mg
+\end{cases}
+\label{2d_single_eom}
+\end{align}
+となる。
+
+$x_0(t)$と$y_0(t)$は外から与えられる2階時間微分可能な関数である。
+
+\eqref{2d_single_cons}を時間微分する
+\begin{align}
+    &\qty(x_1 - x_0)^2 + \qty(y_1 - y_0)^2 = l^2 \tag{\ref{2d_single_cons}} \\
+    \xrightarrow{\dv{}{t}}&
+    \qty(x_1 - x_0) \qty(\dot{x}_1 - \dot{x}_0) + \qty(y_1 - y_0) \qty(\dot{y}_1 - \dot{y}_0) = 0 \\
+    \xrightarrow{\dv{}{t}}&
+    \qty(\dot{x}_1 - \dot{x}_0)^2 + \qty(\dot{y}_1 - \dot{y}_0)^2 
+        + \qty(x_1 - x_0) \qty(\ddot{x}_1 - \ddot{x}_0) + \qty(y_1 - y_0) \qty(\ddot{y}_1 - \ddot{y}_0)= 0
+        \label{2d_single_cons_dd}
+\end{align}
+この\eqref{2d_single_cons_dd}に\eqref{2d_single_eom}を代入して$\lambda(t)$について解くと
+\begin{align}
+    0 &= \qty(\dot{x}_1 - \dot{x}_0)^2 + \qty(\dot{y}_1 - \dot{y}_0)^2
+        + \qty(x_1 - x_0)\qty(-2\frac{\lambda}{m}\qty(x_1 - x_0) - \ddot{x}_0)
+        + \qty(y_1 - y_0)\qty(-2\frac{\lambda}{m}\qty(y_1 - y_0) - g - \ddot{y}_0) \nonumber \\
+    &= \qty(\dot{x}_1 - \dot{x}_0)^2 + \qty(\dot{y}_1 - \dot{y}_0)^2
+        -2 l^2 \frac{\lambda}{m}
+        - \qty(x_1 - x_0) \ddot{x}_0
+        - \qty(y_1 - y_0)\qty(g + \ddot{y}_0) \nonumber \\
+    \rightarrow&
+    \frac{\lambda}{m} = \frac{1}{2 l^2} \qty(
+        \qty(\dot{x}_1 - \dot{x}_0)^2 + \qty(\dot{y}_1 - \dot{y}_0)^2
+        - \qty(x_1 - x_0) \ddot{x}_0 - \qty(y_1 - y_0)\qty(g + \ddot{y}_0)
+    ) \label{2d_single_lambda}
+\end{align}
+途中で剛体棒長さの拘束条件\eqref{2d_single_cons}がそのまま出てくるので$l^2$に置き換えられるのがミソですね。
+あとはこの\eqref{2d_single_lambda}を\eqref{2d_single_eom}に代入して普通に運動方程式を解けばいいはず。
+
+一般の場合を考える前に特殊な場合を考えておく。
+\eqref{2d_single_lambda}で$x_0(t)=y_0(t)=0$の場合を考える、つまりは普通のなんの変哲もない振り子ということ。
+\eqref{2d_single_lambda}より
+\begin{align}
+    \frac{\lambda}{m} = \frac{1}{2 l^2} \qty(\dot{x}_1^2 + \dot{y}_1^2 - y_1 g)
+\end{align}
+\eqref{2d_single_eom}に代入して
+\begin{align}
+\begin{cases}
+    \ddot{x}_1 = -\frac{1}{l^2} \qty(\dot{x}_1^2 + \dot{y}_1^2 - y_1 g) x_1 \\
+    \ddot{y}_1 = -\frac{1}{l^2} \qty(\dot{x}_1^2 + \dot{y}_1^2 - y_1 g) y_1 - g
+\end{cases}
+\end{align}
+となる。
+あとでこれを直接解いてみるが、一旦検算のために$x_1(t)=l\cos{\theta(t)}, y_1(t)=l\sin{\theta(t)}$を代入してみる
+（これは$x$軸から反時計回りに$\theta$をとっている、つまり普通の偏角）。
+
+$\ddot{x}_1$についての式より
+\begin{align}
+    0 &= l\dv[2]{\qty(\cos\theta(t))}{t}
+        + \frac{1}{l^2} \qty(
+            \qty(l\dv{\qty(\cos\theta(t))}{t})^2 + \qty(l\dv{\qty(\sin\theta(t))}{t})^2
+            - l\sin{\theta(t)} g
+        ) l\cos{\theta(t)} \nonumber \\
+    &= -\dv{}{t}\qty(\dot{\theta}\sin\theta) + \qty(\dot{\theta}^2 - \frac{g}{l}\sin\theta) \cos\theta \nonumber \\
+    &= -\ddot{\theta}\sin\theta - \dot{\theta}^2\cos\theta + \qty(\dot{\theta}^2 - \frac{g}{l}\sin\theta) \cos\theta \nonumber \\
+    \rightarrow&
+    \ddot{\theta} = -\frac{g}{l}\cos\theta
+\end{align}
+$\ddot{y}_1$についての式も同様に変形できる。
+あってそうですね。
+
+TODO: ここに数値計算
+
+\section{3次元多重振り子をラグランジュ未定乗数法で解く}
+
+TODO
+
+\bibliographystyle{plain}
+\bibliography{main.bib}
+\end{document}
