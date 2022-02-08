@@ -61,7 +61,7 @@ $x_0(t)$と$y_0(t)$は外から与えられる2階時間微分可能な関数で
         + \qty(x_1 - x_0) \qty(\ddot{x}_1 - \ddot{x}_0) + \qty(y_1 - y_0) \qty(\ddot{y}_1 - \ddot{y}_0)= 0
         \label{2d_single_cons_dd}
 \end{align}
-この\eqref{2d_single_cons_dd}に\eqref{2d_single_eom}を代入して$\lambda(t)$について解くと
+この\eqref{2d_single_cons_dd}に\eqref{2d_single_eom}を代入して$\lambda(t)/m$について解くと
 \begin{align}
     0 &= \qty(\dot{x}_1 - \dot{x}_0)^2 + \qty(\dot{y}_1 - \dot{y}_0)^2
         + \qty(x_1 - x_0)\qty(-2\frac{\lambda}{m}\qty(x_1 - x_0) - \ddot{x}_0)
@@ -111,11 +111,66 @@ $\ddot{x}_1$についての式より
 $\ddot{y}_1$についての式も同様に変形できる。
 あってそうですね。
 
-TODO: ここに数値計算
+\section{多次元多重振り子をラグランジュ未定乗数法で解く}
 
-\section{3次元多重振り子をラグランジュ未定乗数法で解く}
+$N$個の質点が伸び縮みしない剛体棒で繋がれている状況を考える。
+根本の座標が$\va{x}_0(t)$、根本から$i$番目の質点の質量$m_i$座標$\va{x}_i(t)$とする。
+$0$番目が根本である。
 
-TODO
+今回は問題設定として、任意の$i$で座標を given にできるとする。
+つまり多重振り子の任意の箇所を手で持って操作できるような状況を考える。
+操作対象の点(根本の点を含むので質点とは言わない)のインデックスの集合を$C$としておく。
+
+重力加速度を$\va{g}$とする。
+このベクトルになった重力加速度は、例えば1章の2次元振り子の例だと$\va{g} = (0, g)$と解釈すれば良い。
+重力の向きと重力加速度の向きがマイナス符号になってしまっているな。
+
+これから何度も出てくるので以下の略記を利用する。
+\begin{align}
+    \va{x}_{i-1,i} = \va{x}_i - \va{x}_{i-1}
+\end{align}
+
+剛体棒による拘束条件を定式化すると
+\begin{align}
+    \abs{\va{x}_{i-1,i}}^2 = l_i^2 \label{nd_mult_cons}
+\end{align}
+となる。
+
+拘束条件込みのラグランジアンと運動方程式は
+\begin{align}
+    L &= \sum_{i=1}^N \qty(
+        \frac{1}{2} m_i \abs{\dot{\va{x}}_i}^2
+        - m_i \va{g} \vdot \va{x}_i
+        - \lambda_i \qty(\abs{\va{x}_{i-1,i}}^2 - l_i^2)
+    ) \\
+    m_i \ddot{\va{x}}_i &= -m_i \va{g} - 2\lambda_i \va{x}_{i-1,i}
+\end{align}
+となる。
+
+\eqref{nd_mult_cons}を時間で微分する
+\begin{align}
+    & \abs{\va{x}_{i-1,i}}^2 = l_i^2 \tag{\ref{nd_mult_cons}} \\
+    \xrightarrow{\dv[2]{}{t}} &
+    \abs{\dot{\va{x}}_{i-1,i}}^2 + \va{x}_{i-1,i} \vdot \ddot{\va{x}}_{i-1,i} = 0
+\end{align}
+これを使って$\lambda_i/m_i$について解く。
+まずは$i, i-1 \notin C$の場合
+\begin{align}
+    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(2\frac{\lambda_i}{m_i} \va{x}_i - 2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-1}) = 0
+\end{align}
+次に$i \notin C, i-1 \in C$の場合
+\begin{align}
+    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(\va{g} + 2\frac{\lambda_i}{m_i} \va{x}_i + \ddot{\va{x}}_{i-1}) = 0
+\end{align}
+最後に$i \in C, i-1 \notin C$の場合
+\begin{align}
+    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(-\ddot{\va{x}}_i - \va{g} - 2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-1}) = 0
+\end{align}
+これらを連立すれば解けるはず。
+
+$\lambda_i/m_i$についてただの2段の対角行列（というのか知らないけど）。
+運動方程式も同様。
+なので数値的にやるなら$\lambda_i/m_i$については解析的に解かずそのまま数値的に線型方程式を2回解くのが良さそう。
 
 \bibliographystyle{plain}
 \bibliography{main.bib}
