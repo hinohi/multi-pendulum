@@ -143,7 +143,7 @@ $0$番目が根本である。
         - m_i \va{g} \vdot \va{x}_i
         - \lambda_i \qty(\abs{\va{x}_{i-1,i}}^2 - l_i^2)
     ) \\
-    m_i \ddot{\va{x}}_i &= -m_i \va{g} - 2\lambda_i \va{x}_{i-1,i}
+    m_i \ddot{\va{x}}_i &= -m_i \va{g} - 2\lambda_i \va{x}_{i-1,i} \label{ng_multi_eom}
 \end{align}
 となる。
 
@@ -156,21 +156,50 @@ $0$番目が根本である。
 これを使って$\lambda_i/m_i$について解く。
 まずは$i, i-1 \notin C$の場合
 \begin{align}
-    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(2\frac{\lambda_i}{m_i} \va{x}_i - 2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-1}) = 0
+    &\abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(2\frac{\lambda_i}{m_i} \va{x}_{i-1,i} -  2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-2,i-1}) = 0
 \end{align}
 次に$i \notin C, i-1 \in C$の場合
 \begin{align}
-    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(\va{g} + 2\frac{\lambda_i}{m_i} \va{x}_i + \ddot{\va{x}}_{i-1}) = 0
+    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(\va{g} + 2\frac{\lambda_i}{m_i} \va{x}_{i-1,i} + \ddot{\va{x}}_{i-1}) = 0 \label{ng_multi_lambda2}
 \end{align}
 最後に$i \in C, i-1 \notin C$の場合
 \begin{align}
-    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(-\ddot{\va{x}}_i - \va{g} - 2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-1}) = 0
+    \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(-\ddot{\va{x}}_i - \va{g} - 2\frac{\lambda_{i-1}}{m_{i-1}} \va{x}_{i-2,i-1}) = 0
 \end{align}
 これらを連立すれば解けるはず。
 
 $\lambda_i/m_i$についてただの2段の対角行列（というのか知らないけど）。
 運動方程式も同様。
 なので数値的にやるなら$\lambda_i/m_i$については解析的に解かずそのまま数値的に線型方程式を2回解くのが良さそう。
+
+無次元化しておく。
+振り子全体の質量$m$と長さ$l$を素朴に定義し、典型時間$\tau$も素朴に定義する。
+\begin{align}
+    m &= \sum_{i=1}^N m_i \\
+    l &= \sum_{i=1}^N l_i \\
+    \tau &= \sqrt{\frac{l}{\abs{\va{g}}}}
+\end{align}
+これを用いて$x^\prime = x/l$、$t^\prime = t / \tau$の書き換えを行う。
+まず運動方程式\eqref{ng_multi_eom}が
+\begin{align}
+    & m_i \ddot{\va{x}}_i = -m_i \va{g} - 2\lambda_i \va{x}_{i-1,i} \tag{\ref{ng_multi_eom}} \\
+    \rightarrow &
+    \frac{l}{\tau^2} \ddot{\va{x}}_i^\prime = -\va{g} - 2\frac{\lambda_i}{m_i} l \va{x}_{i-1,i}^\prime \nonumber \\
+    \rightarrow &
+    \ddot{\va{x}}_i^\prime = -\frac{\tau^2}{l} \va{g} - 2 \frac{\lambda_i \tau^2}{m_i} \va{x}_{i-1,i}^\prime
+\end{align}
+となる。
+$\lambda_i$についての式も一つだけ解いておく。\eqref{ng_multi_lambda2}は
+\begin{align}
+    & \abs{\dot{\va{x}}_{i-1,i}}^2 - \va{x}_{i-1,i} \vdot \qty(\va{g} + 2\frac{\lambda_i}{m_i} \va{x}_{i-1,i} + \ddot{\va{x}}_{i-1}) = 0 \tag{\ref{ng_multi_lambda2}} \\
+    \rightarrow &
+    \frac{l^2}{\tau^2} \abs{\dot{\va{x}}_{i-1,i}^\prime}^2 - l \va{x}_{i-1,i}^\prime \vdot \qty(\va{g} + 2\frac{\lambda_i}{m_i} l \va{x}_{i-1,i}^\prime + \frac{l}{\tau^2}\ddot{\va{x}}_{i-1}^\prime) = 0 \nonumber \\
+    \rightarrow &
+    \abs{\dot{\va{x}}_{i-1,i}^\prime}^2 - \va{x}_{i-1,i}^\prime \vdot \qty(\frac{\tau^2}{l}\va{g} + 2\frac{\lambda_i\tau^2}{m_i} \va{x}_{i-1,i}^\prime + \ddot{\va{x}}_{i-1}^\prime) = 0 \nonumber \\
+    \rightarrow &
+    2\frac{\lambda_i\tau^2}{m_i} = \abs{\va{x}_{i-1,i}^\prime}^{-2} \qty(\abs{\dot{\va{x}}_{i-1,i}^\prime}^2 - \va{x}_{i-1,i}^\prime \vdot \qty(\frac{\tau^2}{l}\va{g} + \ddot{\va{x}}_{i-1}^\prime))
+\end{align}
+となる。
 
 \bibliographystyle{plain}
 \bibliography{main.bib}
