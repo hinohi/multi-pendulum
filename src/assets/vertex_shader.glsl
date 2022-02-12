@@ -12,8 +12,9 @@ uniform mat4 inv_matrix;
 uniform vec3 light_direction;
 
 void main() {
+    vec4 ambient_color = vec4(0.1, 0.1, 0.1, 1.0);
     vec3  inv_light = normalize(inv_matrix * vec4(light_direction, 0.0)).xyz;
-    float diffuse  = clamp(dot(normal, inv_light), 0.1, 1.0);
-    vert_color = color * vec4(vec3(diffuse), 1.0);
+    float diffuse  = clamp(dot(normal, inv_light), 0.4, 1.0);
+    vert_color = color * vec4(vec3(diffuse), 1.0) + ambient_color;
     gl_Position = mvp_matrix * vec4(position, 1.0);
 }

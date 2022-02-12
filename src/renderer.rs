@@ -9,8 +9,6 @@ use memoffset::offset_of;
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlUniformLocation};
 
-use crate::log;
-
 #[derive(Debug)]
 pub struct Backend {
     gl: Rc<Context>,
@@ -24,9 +22,18 @@ pub struct Object {
     mvp_matrix_location: WebGlUniformLocation,
     inv_matrix_location: WebGlUniformLocation,
     light_direction_location: WebGlUniformLocation,
+    vertex_attrib: Vec<VertexAttrib>,
     vbo: WebBufferKey,
     ebo: WebBufferKey,
     elements: usize,
+}
+
+#[derive(Debug)]
+struct VertexAttrib {
+    index: u32,
+    size: usize,
+    stride: usize,
+    offset: usize,
 }
 
 #[repr(C)]
@@ -70,14 +77,17 @@ impl Backend {
         &self,
         view_projection_matrix: Matrix4<f64>,
         light_direction: Vector3<f64>,
-        objects: &[(&Object, Matrix4<f64>)],
+        objects: &[(&Object, Vec<Matrix4<f64>>)],
     ) {
         unsafe {
             self.gl
                 .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
         }
-        for &(obj, mat) in objects {
-            obj.draw(view_projection_matrix, mat, light_direction);
+        for (obj, mat) in objects {
+            obj.bind();
+            for mat in mat.iter() {
+                obj.draw(view_projection_matrix, *mat, light_direction);
+            }
         }
         unsafe {
             self.gl.flush();
@@ -100,30 +110,32 @@ impl Object {
             bytemuck::cast_slice(&element_array),
         )?;
 
-        make_vertex_attrib(
-            &gl,
-            program,
-            "position",
-            3,
-            std::mem::size_of::<Vertex>(),
-            offset_of!(Vertex, position),
-        )?;
-        make_vertex_attrib(
-            &gl,
-            program,
-            "normal",
-            3,
-            std::mem::size_of::<Vertex>(),
-            offset_of!(Vertex, normal),
-        )?;
-        make_vertex_attrib(
-            &gl,
-            program,
-            "color",
-            4,
-            std::mem::size_of::<Vertex>(),
-            offset_of!(Vertex, color),
-        )?;
+        let vertex_attrib = vec![
+            VertexAttrib::new(
+                &gl,
+                program,
+                "position",
+                3,
+                std::mem::size_of::<Vertex>(),
+                offset_of!(Vertex, position),
+            )?,
+            VertexAttrib::new(
+                &gl,
+                program,
+                "normal",
+                3,
+                std::mem::size_of::<Vertex>(),
+                offset_of!(Vertex, normal),
+            )?,
+            VertexAttrib::new(
+                &gl,
+                program,
+                "color",
+                4,
+                std::mem::size_of::<Vertex>(),
+                offset_of!(Vertex, color),
+            )?,
+        ];
 
         let mvp_matrix_location = get_uniform_location(&gl, program, "mvp_matrix")?;
         let inv_matrix_location = get_uniform_location(&gl, program, "inv_matrix")?;
@@ -135,10 +147,23 @@ impl Object {
             mvp_matrix_location,
             inv_matrix_location,
             light_direction_location,
+            vertex_attrib,
             vbo,
             ebo,
             elements: element_array.len(),
         })
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            self.gl.use_program(Some(self.program));
+            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vbo));
+            self.gl
+                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.ebo));
+            for va in self.vertex_attrib.iter() {
+                va.bind(&self.gl);
+            }
+        }
     }
 
     pub fn draw(
@@ -157,10 +182,9 @@ impl Object {
             v
         }
 
-        let inv_matrix = model_matrix.invert().unwrap_or(Matrix4::identity());
-        let mvp_matrix = view_projection_matrix * inv_matrix;
+        let inv_matrix = model_matrix.invert().unwrap_or_else(Matrix4::identity);
+        let mvp_matrix = view_projection_matrix * model_matrix;
         unsafe {
-            self.gl.use_program(Some(self.program));
             self.gl.uniform_matrix_4_f32_slice(
                 Some(&self.mvp_matrix_location),
                 false,
@@ -179,6 +203,39 @@ impl Object {
             );
             self.gl
                 .draw_elements(glow::TRIANGLES, self.elements as i32, glow::UNSIGNED_INT, 0);
+        }
+    }
+}
+
+impl VertexAttrib {
+    fn new(
+        gl: &Context,
+        program: WebProgramKey,
+        name: &str,
+        size: usize,
+        stride: usize,
+        offset: usize,
+    ) -> Result<VertexAttrib, String> {
+        let index = make_vertex_attrib(gl, program, name)?;
+        Ok(VertexAttrib {
+            index,
+            size,
+            stride,
+            offset,
+        })
+    }
+
+    fn bind(&self, gl: &Context) {
+        unsafe {
+            gl.vertex_attrib_pointer_f32(
+                self.index,
+                self.size as i32,
+                glow::FLOAT,
+                false,
+                self.stride as i32,
+                self.offset as i32,
+            );
+            gl.enable_vertex_attrib_array(self.index);
         }
     }
 }
@@ -224,28 +281,12 @@ fn make_program(
     }
 }
 
-fn make_vertex_attrib(
-    gl: &Context,
-    program: WebProgramKey,
-    name: &str,
-    size: usize,
-    stride: usize,
-    offset: usize,
-) -> Result<(), String> {
+fn make_vertex_attrib(gl: &Context, program: WebProgramKey, name: &str) -> Result<u32, String> {
     unsafe {
         let index = gl
             .get_attrib_location(program, name)
             .ok_or_else(|| format!("No '{}' attribute", name))?;
-        gl.enable_vertex_attrib_array(index);
-        gl.vertex_attrib_pointer_f32(
-            index,
-            size as i32,
-            glow::FLOAT,
-            false,
-            stride as i32,
-            offset as i32,
-        );
-        Ok(())
+        Ok(index)
     }
 }
 

@@ -4,9 +4,8 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
 if (!canvas) {
   throw new Error("No 'canvas'");
 }
-console.log(canvas);
-const app = new App(canvas);
 
+const app = new App(canvas);
 
 function step(timestamp: DOMHighResTimeStamp): void {
   app.tick(timestamp);
