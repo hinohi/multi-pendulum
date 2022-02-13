@@ -1,3 +1,9 @@
+[workspace]
+members = [
+    ".",
+    "crates/pendulum",
+]
+
 [package]
 name = "multi-pendulum"
 version = "0.1.0"
@@ -14,9 +20,6 @@ glow = "0.11"
 js-sys = "0.3"
 memoffset = "0.6"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-
-# https://github.com/hinohi/rust-eom
-eom-sim = { path = "../rust-eom" }
 
 [dependencies.web-sys]
 version = "0.3"

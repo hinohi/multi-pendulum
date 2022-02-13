@@ -4,5 +4,9 @@
 # Node
 node_modules
 
+# Python
+.python-version
+.ipynb_checkpoints
+
 # asdf
 .tool-versions

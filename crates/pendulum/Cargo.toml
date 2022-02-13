@@ -1,0 +1,9 @@
+[package]
+name = "pendulum"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cgmath = "0.18"
+itertools = "0.10"
+eom-sim = { git = "https://github.com/hinohi/rust-eom" }
