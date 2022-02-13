@@ -1,2 +1,5 @@
 pub mod dynamics;
-pub mod pendulum;
+mod pendulum;
+
+pub use dynamics::*;
+pub use pendulum::Pendulum;

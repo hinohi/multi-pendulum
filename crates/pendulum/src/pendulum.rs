@@ -91,7 +91,7 @@ impl Pendulum {
             }
             thomas(&a, &b, &c)
         };
-        debug_assert_eq!(lambda.len(), n - 2);
+        debug_assert_eq!(lambda.len(), n);
 
         let mut a = Vec::with_capacity(n);
         for ((&m, (xa, xb)), (&la, &lb)) in self
@@ -115,6 +115,9 @@ impl Pendulum {
         position: &mut [Vector3<f64>],
         velocity: &mut [Vector3<f64>],
     ) -> f64 {
+        if time_end <= time_start {
+            return time_start;
+        }
         assert_eq!(position.len(), velocity.len());
         self.root = root;
         let n = position.len() * 3;
