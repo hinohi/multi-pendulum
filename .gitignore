@@ -1,0 +1,13 @@
+# Rust
+/target
+
+# Node
+node_modules
+dist
+
+# Python
+.python-version
+.ipynb_checkpoints
+
+# asdf
+.tool-versions
