@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::rc::Rc;
-use std::str::FromStr;
 
-use bytemuck::{Pod, Zeroable};
+use asset_utils::{parse_obj, Vertex};
 use cgmath::{Matrix4, SquareMatrix, Vector3};
 use glow::{Context, HasContext, WebBufferKey, WebProgramKey, WebShaderKey};
 use memoffset::offset_of;
@@ -36,14 +34,6 @@ struct VertexAttrib {
     offset: usize,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Zeroable, Pod)]
-pub struct Vertex {
-    position: [f32; 3],
-    normal: [f32; 3],
-    color: [f32; 4],
-}
-
 impl Backend {
     pub fn new(canvas: HtmlCanvasElement) -> Result<Backend, JsValue> {
         let webgl = canvas
@@ -69,8 +59,19 @@ impl Backend {
         }
     }
 
-    pub fn make_object(&self, data: &str, color: [f32; 4]) -> Result<Object, JsValue> {
-        Object::new(self.gl.clone(), data, color).map_err(|err| JsValue::from_str(&err))
+    pub fn make_from_obj(&self, data: &str, color: [f32; 4]) -> Result<Object, JsValue> {
+        let (vertex_array, element_array) =
+            parse_obj(data, color).map_err(|err| JsValue::from_str(&err))?;
+        self.make_object(&vertex_array, &element_array)
+    }
+
+    pub fn make_object(
+        &self,
+        vertex_array: &[Vertex],
+        element_array: &[u32],
+    ) -> Result<Object, JsValue> {
+        Object::new(self.gl.clone(), &vertex_array, &element_array)
+            .map_err(|err| JsValue::from_str(&err))
     }
 
     pub fn draw(
@@ -96,13 +97,16 @@ impl Backend {
 }
 
 impl Object {
-    pub fn new(gl: Rc<Context>, data: &str, color: [f32; 4]) -> Result<Object, String> {
+    pub fn new(
+        gl: Rc<Context>,
+        vertex_array: &[Vertex],
+        element_array: &[u32],
+    ) -> Result<Object, String> {
         let program = make_program(
             &gl,
             include_str!("assets/vertex_shader.glsl"),
             include_str!("assets/fragment_shader.glsl"),
         )?;
-        let (vertex_array, element_array) = parse_obj(data, color)?;
         let vbo = make_buffer(&gl, glow::ARRAY_BUFFER, bytemuck::cast_slice(&vertex_array))?;
         let ebo = make_buffer(
             &gl,
@@ -308,68 +312,4 @@ fn make_buffer(gl: &Context, target: u32, data: &[u8]) -> Result<WebBufferKey, S
         gl.buffer_data_u8_slice(target, data, glow::STATIC_READ);
         Ok(bo)
     }
-}
-
-fn parse_obj(data: &str, color: [f32; 4]) -> Result<(Vec<Vertex>, Vec<u32>), String> {
-    fn parse<'a, I: Iterator<Item = &'a str>, T: FromStr>(
-        i: usize,
-        t: &str,
-        mut it: I,
-    ) -> Result<T, String>
-    where
-        <T as FromStr>::Err: std::error::Error,
-    {
-        it.next()
-            .ok_or_else(|| format!("line {}, type '{}': no value", i, t))?
-            .parse()
-            .map_err(|err| format!("line {}, type '{}': {}", i, t, err))
-    }
-
-    let mut position_array = Vec::new();
-    let mut normal_array = Vec::new();
-    let mut vertex_array = Vec::new();
-    let mut element_array = Vec::new();
-    let mut face_map = HashMap::new();
-    for (i, line) in data.lines().enumerate() {
-        if line.starts_with('#') {
-            continue;
-        }
-        let mut words = line.split_ascii_whitespace();
-        match words.next() {
-            None => (),
-            Some("v") => position_array.push([
-                parse(i, "v", &mut words)?,
-                parse(i, "v", &mut words)?,
-                parse(i, "v", &mut words)?,
-            ]),
-            Some("vn") => normal_array.push([
-                parse(i, "vn", &mut words)?,
-                parse(i, "vn", &mut words)?,
-                parse(i, "vn", &mut words)?,
-            ]),
-            Some("f") => {
-                let words = words.collect::<Vec<_>>();
-                if words.len() != 3 {
-                    return Err(format!("line {}: only support triangle", i));
-                }
-                for word in words {
-                    let mut words = word.split('/');
-                    let pos_id: usize = parse(i, "face v", &mut words)?;
-                    words.next(); // skip texture
-                    let normal_id: usize = parse(i, "face n", &mut words)?;
-                    let vert_id = *face_map.entry((pos_id, normal_id)).or_insert_with(|| {
-                        vertex_array.push(Vertex {
-                            position: position_array[pos_id - 1],
-                            normal: normal_array[normal_id - 1],
-                            color,
-                        });
-                        (vertex_array.len() - 1) as u32
-                    });
-                    element_array.push(vert_id);
-                }
-            }
-            Some(t) => return Err(format!("line {}: unsupported type {}", i, t)),
-        }
-    }
-    Ok((vertex_array, element_array))
 }

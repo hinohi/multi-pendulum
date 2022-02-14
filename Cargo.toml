@@ -1,6 +1,7 @@
 [workspace]
 members = [
     ".",
+    "crates/asset-utils",
     "crates/pendulum",
 ]
 
@@ -26,6 +27,7 @@ wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 #rand_pcg = "0.3"
 #getrandom = { version = "0.2", features = ["js"] }
 
+asset-utils = { path = "./crates/asset-utils" }
 eom-sim = { git = "https://github.com/hinohi/rust-eom" }
 pendulum = { path = "./crates/pendulum" }
 

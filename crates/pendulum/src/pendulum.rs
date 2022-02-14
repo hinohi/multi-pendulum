@@ -167,7 +167,7 @@ impl Pendulum {
 
         let mut t = time_start / self.unit_time;
         let until = time_end / self.unit_time;
-        let dt = (until - t) / 16.0;
+        let dt = (until - t) / 1024.0;
         ticker.iterate_until(self, &mut t, &mut x, &mut v, dt, until);
 
         for (i, p) in position.iter_mut().enumerate() {

@@ -36,9 +36,9 @@ impl App {
     pub fn new(canvas: HtmlCanvasElement) -> Result<App, JsValue> {
         let backend = Backend::new(canvas)?;
         let sphere =
-            backend.make_object(include_str!("assets/ico_sphere.obj"), [0.9, 0.4, 0.4, 1.0])?;
+            backend.make_from_obj(include_str!("assets/ico_sphere.obj"), [0.9, 0.4, 0.4, 1.0])?;
         let cylinder =
-            backend.make_object(include_str!("assets/cylinder.obj"), [0.1, 0.9, 0.1, 1.0])?;
+            backend.make_from_obj(include_str!("assets/cylinder.obj"), [0.1, 0.9, 0.1, 1.0])?;
 
         let g = vec3(0.0, 9.8, 0.0);
         let root = vec3(0.0, 0.0, 0.0);
