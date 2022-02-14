@@ -1,4 +1,4 @@
-import {App} from "multi-pendulum";
+import {App, Mouse} from "multi-pendulum";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
 if (!canvas) {
@@ -7,13 +7,24 @@ if (!canvas) {
 
 const app = new App(canvas);
 const e0 = app.potential_energy() + app.kinetic_energy();
+const mouseState = new Mouse;
+
+canvas.addEventListener('mousedown', (event) => {
+  mouseState.add_mousedown(event.offsetX, event.offsetY, event.button);
+})
+canvas.addEventListener('mouseup', (event) => {
+  mouseState.add_mouseup(event.offsetX, event.offsetY, event.button);
+})
+canvas.addEventListener('mousemove', (event) => {
+  mouseState.add_mousemove(event.offsetX, event.offsetY);
+})
 
 function step(timestamp: DOMHighResTimeStamp): void {
   const energyDiv = document.getElementById("energy") as HTMLDivElement | null;
   if (!energyDiv) {
     throw new Error("No 'energy'");
   }
-  app.tick(timestamp);
+  app.tick(timestamp, mouseState);
   const pe = app.potential_energy();
   const ke = app.kinetic_energy();
   const unit = app.unit_energy();

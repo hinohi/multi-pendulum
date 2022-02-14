@@ -152,6 +152,7 @@ dependencies = [
  "itertools",
  "js-sys",
  "memoffset",
+ "num-traits",
  "pendulum",
  "wasm-bindgen",
  "web-sys",

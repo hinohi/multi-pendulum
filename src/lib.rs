@@ -1,17 +1,23 @@
 use asset_utils::make_grid;
 use cgmath::{
-    perspective, vec3, vec4, Deg, InnerSpace, Matrix3, Matrix4, Quaternion, Rotation, SquareMatrix,
-    Vector3,
+    perspective, vec3, vec4, Deg, InnerSpace, Matrix, Matrix3, Matrix4, Quaternion, Rotation,
+    Rotation3, SquareMatrix, Vector3,
 };
 use eom_sim::runge_kutta::RK4;
 use itertools::Itertools;
+use num_traits::One;
 use pendulum::{FixedPoint, Pendulum};
 use wasm_bindgen::prelude::*;
 use web_sys::{console, HtmlCanvasElement};
 
-use crate::renderer::{Backend, Object};
+pub use crate::user_input::Mouse;
+use crate::{
+    renderer::{Backend, Object},
+    user_input::MouseButton,
+};
 
 mod renderer;
+mod user_input;
 
 #[allow(dead_code)]
 pub fn log(s: String) {
@@ -25,6 +31,8 @@ pub struct App {
     sphere: Object,
     cylinder: Object,
     floor: Object,
+    // UI
+    quaternion: Quaternion<f64>,
     // physics
     pendulum: Pendulum,
     root: Vector3<f64>,
@@ -69,10 +77,14 @@ impl App {
         let velocity = vec![vec3(0.0, 0.0, 0.0); length_mass.len()];
 
         Ok(App {
+            // GL
             backend,
             sphere,
             cylinder,
             floor,
+            // UI
+            quaternion: Quaternion::one(),
+            // physics
             pendulum,
             root,
             position,
@@ -82,7 +94,11 @@ impl App {
     }
 
     #[wasm_bindgen]
-    pub fn tick(&mut self, timestamp_ms: f64) -> Result<(), JsValue> {
+    pub fn tick(&mut self, timestamp_ms: f64, mouse: &Mouse) -> Result<(), JsValue> {
+        let width = 600;
+        let height = 600;
+        self.backend.set_size(width, height);
+
         let t = timestamp_ms / 1000.0;
         let last_tick = self.last_tick.replace(t).unwrap_or(t);
 
@@ -96,12 +112,23 @@ impl App {
         );
         self.last_tick.replace(new_tick);
 
-        let width = 600;
-        let height = 600;
-        self.backend.set_size(width, height);
+        if let Some((x, y)) = mouse.drag(MouseButton::Middle) {
+            if x != 0 || y != 0 {
+                let x = x as f64 / width as f64;
+                let y = y as f64 / width as f64;
+                let m = Matrix3::from(self.quaternion).transpose();
+                let axis = m.y * x + m.x * y;
+                self.quaternion = self.quaternion
+                    * Quaternion::from_axis_angle(
+                        axis.normalize(),
+                        Deg(360.0 * (x * x + y * y).sqrt()),
+                    );
+            }
+        }
 
         let projection_matrix = perspective(Deg(60.0), width as f64 / height as f64, 0.1, 10000.0);
-        let view_matrix = Matrix4::from_translation(vec3(0.0, 0.0, -1.5));
+        let view_matrix =
+            Matrix4::from_translation(vec3(0.0, 0.0, -1.5)) * Matrix4::from(self.quaternion);
         self.backend.draw(
             projection_matrix * view_matrix,
             vec3(1.0, 1.0, 0.0),
