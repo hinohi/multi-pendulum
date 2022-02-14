@@ -40,10 +40,10 @@ impl App {
         let cylinder =
             backend.make_object(include_str!("assets/cylinder.obj"), [0.1, 0.9, 0.1, 1.0])?;
 
+        let g = vec3(0.0, 9.8, 0.0);
         let root = vec3(0.0, 0.0, 0.0);
-        let length_mass = vec![(0.1, 1.0), (0.2, 2.0), (0.3, 1.0)];
-        let pendulum =
-            Pendulum::new(vec3(0.0, 9.8, 0.0), &length_mass).map_err(|s| JsValue::from_str(&s))?;
+        let length_mass = vec![(0.1, 1.0), (0.1, 2.0), (0.3, 1.0)];
+        let pendulum = Pendulum::new(g, &length_mass).map_err(|s| JsValue::from_str(&s))?;
         let mut position = Vec::with_capacity(length_mass.len());
         let mut direction = vec3(1.0, 0.0, 0.0).normalize();
         for &(l, _) in length_mass.iter() {
@@ -80,7 +80,7 @@ impl App {
         );
         self.last_tick.replace(new_tick);
 
-        let width = 800;
+        let width = 600;
         let height = 600;
         self.backend.set_size(width, height);
 
@@ -92,6 +92,21 @@ impl App {
             &self.calc_objects_matrix(),
         );
         Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn potential_energy(&self) -> f64 {
+        self.pendulum.potential_energy(&self.position)
+    }
+
+    #[wasm_bindgen]
+    pub fn kinetic_energy(&self) -> f64 {
+        self.pendulum.kinetic_energy(&self.velocity)
+    }
+
+    #[wasm_bindgen]
+    pub fn unit_energy(&self) -> f64 {
+        self.pendulum.unit_energy()
     }
 }
 

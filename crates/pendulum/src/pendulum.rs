@@ -12,6 +12,7 @@ pub struct Pendulum {
     mass: Vec<f64>,
     unit_time: f64,
     unit_length: f64,
+    unit_mass: f64,
     root: Box<dyn Dynamics>,
 }
 
@@ -47,8 +48,29 @@ impl Pendulum {
             mass,
             unit_length,
             unit_time,
+            unit_mass,
             root: Box::new(FixedPoint(vec3(0.0, 0.0, 0.0))),
         })
+    }
+
+    pub fn potential_energy(&self, x: &[Vector3<f64>]) -> f64 {
+        let mut e = 0.0;
+        for (&m, x) in self.mass.iter().zip(x) {
+            e += m * x.dot(self.g);
+        }
+        e * self.unit_mass * self.unit_length / self.unit_time / self.unit_time
+    }
+
+    pub fn kinetic_energy(&self, v: &[Vector3<f64>]) -> f64 {
+        let mut k = 0.0;
+        for (&m, v) in self.mass.iter().zip(v) {
+            k += v.magnitude2() * m;
+        }
+        k * 0.5 * self.unit_mass
+    }
+
+    pub fn unit_energy(&self) -> f64 {
+        self.unit_mass * self.unit_length * self.unit_length / self.unit_time / self.unit_time
     }
 }
 
