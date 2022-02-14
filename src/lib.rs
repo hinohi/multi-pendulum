@@ -1,5 +1,7 @@
+use asset_utils::make_grid;
 use cgmath::{
-    perspective, vec3, vec4, Deg, InnerSpace, Matrix3, Matrix4, Quaternion, Rotation, Vector3,
+    perspective, vec3, vec4, Deg, InnerSpace, Matrix3, Matrix4, Quaternion, Rotation, SquareMatrix,
+    Vector3,
 };
 use eom_sim::runge_kutta::RK4;
 use itertools::Itertools;
@@ -22,6 +24,7 @@ pub struct App {
     backend: Backend,
     sphere: Object,
     cylinder: Object,
+    floor: Object,
     // physics
     pendulum: Pendulum,
     root: Vector3<f64>,
@@ -39,6 +42,18 @@ impl App {
             backend.make_from_obj(include_str!("assets/ico_sphere.obj"), [0.9, 0.4, 0.4, 1.0])?;
         let cylinder =
             backend.make_from_obj(include_str!("assets/cylinder.obj"), [0.1, 0.9, 0.1, 1.0])?;
+        let floor = {
+            let (v, e) = make_grid(
+                [-25.0, -3.0, -25.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+                51,
+                51,
+                [0.8, 0.8, 1.0, 1.0],
+                [1.0, 1.0, 0.8, 1.0],
+            );
+            backend.make_object(&v, &e)?
+        };
 
         let g = vec3(0.0, 9.8, 0.0);
         let root = vec3(0.0, 0.0, 0.0);
@@ -57,6 +72,7 @@ impl App {
             backend,
             sphere,
             cylinder,
+            floor,
             pendulum,
             root,
             position,
@@ -111,7 +127,7 @@ impl App {
 }
 
 impl App {
-    fn calc_objects_matrix(&self) -> [(&Object, Vec<Matrix4<f64>>); 2] {
+    fn calc_objects_matrix(&self) -> [(&Object, Vec<Matrix4<f64>>); 3] {
         let mut position = vec![self.root];
         position.extend_from_slice(&self.position);
 
@@ -138,6 +154,10 @@ impl App {
             let scale = Matrix4::from_scale(0.4 * global_scale);
             sphere_mat.push(Matrix4::from_translation(b) * rot * scale);
         }
-        [(&self.cylinder, cylinder_mat), (&self.sphere, sphere_mat)]
+        [
+            (&self.floor, vec![Matrix4::identity()]),
+            (&self.cylinder, cylinder_mat),
+            (&self.sphere, sphere_mat),
+        ]
     }
 }
