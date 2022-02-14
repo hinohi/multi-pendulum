@@ -82,8 +82,8 @@ impl Pendulum {
         let lambda = {
             let mut a = Vec::with_capacity(n);
             a.push(x[0].magnitude2() / self.mass[0]);
-            for (xx, (&ma, &mb)) in x.iter().skip(1).zip(self.mass.iter().tuple_windows()) {
-                a.push(xx.magnitude2() * (ma + mb) / (ma * mb));
+            for (x, (&ma, &mb)) in x.iter().skip(1).zip(self.mass.iter().tuple_windows()) {
+                a.push(x.magnitude2() * (ma + mb) / (ma * mb));
             }
             let mut b = Vec::with_capacity(n - 1);
             for ((xa, xb), &m) in x.iter().tuple_windows().zip(self.mass.iter()) {
@@ -91,8 +91,8 @@ impl Pendulum {
             }
             let mut c = Vec::with_capacity(n);
             c.push(v[0].magnitude2() - x[0].dot(self.g + self.root.a(t)));
-            for vv in v.iter().skip(1) {
-                c.push(vv.magnitude2());
+            for v in v.iter().skip(1) {
+                c.push(v.magnitude2());
             }
             debug_assert_eq!(a.len(), n);
             debug_assert_eq!(b.len(), n - 1);
@@ -110,7 +110,7 @@ impl Pendulum {
         {
             a.push((xb * lb - xa * la) / m - self.g);
         }
-        a.push(-x[n - 2] * lambda[n - 2] / self.mass[n - 1] - self.g);
+        a.push(-x[n - 1] * lambda[n - 1] / self.mass[n - 1] - self.g);
         debug_assert_eq!(a.len(), n);
         a
     }
@@ -187,14 +187,17 @@ impl Eom for Pendulum {
         }
     }
 
-    fn correct(&self, _t: f64, x: &mut [f64], _v: &mut [f64]) {
-        // for (i, &l) in self.length.iter().enumerate() {
-        //     let i = i * 3;
-        //     let v = vec3(x[i], x[i + 1], x[i + 2]).normalize_to(l);
-        //     x[i] = v.x;
-        //     x[i + 1] = v.y;
-        //     x[i + 2] = v.z;
-        // }
+    fn correct(&self, t: f64, x: &mut [f64], _v: &mut [f64]) {
+        let mut last_pos = self.root.x(t);
+        for (i, &l) in self.length.iter().enumerate() {
+            let i = i * 3;
+            let pos = vec3(x[i], x[i + 1], x[i + 2]);
+            let pos = last_pos + (pos - last_pos).normalize_to(l);
+            x[i] = pos.x;
+            x[i + 1] = pos.y;
+            x[i + 2] = pos.z;
+            last_pos = pos;
+        }
     }
 }
 
