@@ -1,6 +1,4 @@
-use cgmath::{
-    perspective, vec3, vec4, Deg, InnerSpace, Matrix3, Matrix4, Quaternion, Rotation, Vector3,
-};
+use cgmath::{perspective, vec3, vec4, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use eom_sim::runge_kutta::RK4;
 use itertools::Itertools;
 use pendulum::{FixedPoint, Pendulum};
@@ -41,18 +39,17 @@ impl App {
             backend.make_object(include_str!("assets/cylinder.obj"), [0.1, 0.9, 0.1, 1.0])?;
 
         let root = vec3(0.0, 0.0, 0.0);
-        let n = 3;
-        let length_mass = vec![(0.1, 1.0), (0.2, 2.0), (0.3, 1.0)];
+        let length_mass = vec![(0.1, 1.0), (0.2, 2.0)];
         let pendulum =
             Pendulum::new(vec3(0.0, 9.8, 0.0), &length_mass).map_err(|s| JsValue::from_str(&s))?;
-        let mut position = Vec::with_capacity(n);
-        let mut direction = vec3(3.0, -1.0, -5.0).normalize();
+        let mut position = Vec::with_capacity(length_mass.len());
+        let direction = vec3(3.0, -1.0, 0.0).normalize();
         for &(l, _) in length_mass.iter() {
             let last = position.last().copied().unwrap_or(root);
             position.push(last + direction * l);
-            direction = Matrix3::from_angle_y(Deg(30.0)) * direction;
+            // direction = Matrix3::from_angle_y(Deg(30.0)) * direction;
         }
-        let velocity = vec![vec3(0.0, 0.0, 0.0); n];
+        let velocity = vec![vec3(0.0, 0.0, 0.0); length_mass.len()];
 
         Ok(App {
             backend,
@@ -68,7 +65,7 @@ impl App {
 
     #[wasm_bindgen]
     pub fn tick(&mut self, timestamp_ms: f64) -> Result<(), JsValue> {
-        let t = timestamp_ms / 1000.0 / 100.0;
+        let t = timestamp_ms / 1000.0 / 10.0;
         let last_tick = self.last_tick.replace(t).unwrap_or(t);
 
         let new_tick = self.pendulum.tick(
@@ -86,7 +83,7 @@ impl App {
         self.backend.set_size(width, height);
 
         let projection_matrix = perspective(Deg(60.0), width as f64 / height as f64, 0.1, 10000.0);
-        let view_matrix = Matrix4::from_translation(vec3(0.0, 0.0, -0.5));
+        let view_matrix = Matrix4::from_translation(vec3(0.0, 0.0, -10.0));
         self.backend.draw(
             projection_matrix * view_matrix,
             vec3(1.0, 1.0, 0.0),

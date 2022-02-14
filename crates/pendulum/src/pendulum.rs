@@ -60,35 +60,43 @@ impl Pendulum {
         v: &[Vector3<f64>],
     ) -> Vec<Vector3<f64>> {
         let n = x.len();
-        let t = t * self.unit_time;
+        let t = t * self.unit_time; // restore dimension
 
-        let mut xx = Vec::with_capacity(n);
-        xx.push(x[0] - self.root.x(t));
-        for (a, b) in x.iter().tuple_windows() {
-            xx.push(b - a);
-        }
-        let mut vv = Vec::with_capacity(n);
-        vv.push(v[0] - self.root.v(t));
-        for (a, b) in v.iter().tuple_windows() {
-            vv.push(b - a);
-        }
+        let x = {
+            let mut xx = Vec::with_capacity(n);
+            xx.push(x[0] - self.root.x(t));
+            for (a, b) in x.iter().tuple_windows() {
+                xx.push(b - a);
+            }
+            xx
+        };
+        let v = {
+            let mut vv = Vec::with_capacity(n);
+            vv.push(v[0] - self.root.v(t));
+            for (a, b) in v.iter().tuple_windows() {
+                vv.push(b - a);
+            }
+            vv
+        };
 
         let lambda = {
-            let n = xx.len();
             let mut a = Vec::with_capacity(n);
-            a.push(xx[0].magnitude2() / self.mass[0]);
-            for (xx, (&ma, &mb)) in xx.iter().zip(self.mass.iter().tuple_windows()) {
+            a.push(x[0].magnitude2() / self.mass[0]);
+            for (xx, (&ma, &mb)) in x.iter().skip(1).zip(self.mass.iter().tuple_windows()) {
                 a.push(xx.magnitude2() * (ma + mb) / (ma * mb));
             }
             let mut b = Vec::with_capacity(n - 1);
-            for ((xa, xb), &m) in xx.iter().tuple_windows().zip(self.mass.iter()) {
+            for ((xa, xb), &m) in x.iter().tuple_windows().zip(self.mass.iter()) {
                 b.push(xa.dot(*xb) / m);
             }
             let mut c = Vec::with_capacity(n);
-            c.push(vv[0].magnitude2() - xx[0].dot(self.g + self.root.a(t)));
-            for vv in v.iter() {
+            c.push(v[0].magnitude2() - x[0].dot(self.g + self.root.a(t)));
+            for vv in v.iter().skip(1) {
                 c.push(vv.magnitude2());
             }
+            debug_assert_eq!(a.len(), n);
+            debug_assert_eq!(b.len(), n - 1);
+            debug_assert_eq!(c.len(), n);
             thomas(&a, &b, &c)
         };
         debug_assert_eq!(lambda.len(), n);
@@ -97,12 +105,13 @@ impl Pendulum {
         for ((&m, (xa, xb)), (&la, &lb)) in self
             .mass
             .iter()
-            .zip(xx.iter().tuple_windows())
+            .zip(x.iter().tuple_windows())
             .zip(lambda.iter().tuple_windows())
         {
             a.push((xb * lb - xa * la) / m - self.g);
         }
-        a.push(-xx[n - 2] * lambda[n - 2] / self.mass[n - 1] - self.g);
+        a.push(-x[n - 2] * lambda[n - 2] / self.mass[n - 1] - self.g);
+        debug_assert_eq!(a.len(), n);
         a
     }
 
@@ -123,15 +132,15 @@ impl Pendulum {
         let n = position.len() * 3;
         let mut x = Vec::with_capacity(n);
         let mut v = Vec::with_capacity(n);
-        for i in position.iter() {
-            x.push(i.x / self.unit_length);
-            x.push(i.y / self.unit_length);
-            x.push(i.z / self.unit_length);
+        for p in position.iter() {
+            x.push(p.x / self.unit_length);
+            x.push(p.y / self.unit_length);
+            x.push(p.z / self.unit_length);
         }
-        for i in velocity.iter() {
-            v.push(i.x * (self.unit_time / self.unit_length));
-            v.push(i.y * (self.unit_time / self.unit_length));
-            v.push(i.z * (self.unit_time / self.unit_length));
+        for p in velocity.iter() {
+            v.push(p.x * (self.unit_time / self.unit_length));
+            v.push(p.y * (self.unit_time / self.unit_length));
+            v.push(p.z * (self.unit_time / self.unit_length));
         }
 
         let mut t = time_start / self.unit_time;
@@ -179,13 +188,13 @@ impl Eom for Pendulum {
     }
 
     fn correct(&self, _t: f64, x: &mut [f64], _v: &mut [f64]) {
-        for (i, &l) in self.length.iter().enumerate() {
-            let i = i * 3;
-            let v = vec3(x[i], x[i + 1], x[i + 2]).normalize_to(l);
-            x[i] = v.x;
-            x[i + 1] = v.y;
-            x[i + 2] = v.z;
-        }
+        // for (i, &l) in self.length.iter().enumerate() {
+        //     let i = i * 3;
+        //     let v = vec3(x[i], x[i + 1], x[i + 2]).normalize_to(l);
+        //     x[i] = v.x;
+        //     x[i + 1] = v.y;
+        //     x[i + 2] = v.z;
+        // }
     }
 }
 
