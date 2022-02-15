@@ -29,7 +29,7 @@
 \end{align}
 ただし$l$[\si{m}]は剛体棒の長さ。
 
-拘束条件込みのラグランジアンは\cite{a}を参考にすると
+拘束条件込みのラグランジアンは\cite{lagrangian}を参考にすると
 \begin{align}
     L = \frac{1}{2} m \qty(\dot{x}_1^2 + \dot{y}_1^2) - mgy_1
         - \lambda \qty(\qty(x_1 - x_0)^2 + \qty(y_1 - y_0)^2 - l^2)
@@ -237,33 +237,70 @@ $i=N$の場合
 これは
 \begin{align}
     \begin{bmatrix}
-        c   & b_1 &      0 & \dots   &         & 0 \\
-        b_1 & a_2 &    b_2 &         &         & \\
-        0   & b_2 & \ddots & \ddots  &         &  \\
-        \vdots &  & \ddots & a_{N-2} & b_{N-2} & 0 \\
-            &     &        & b_{N-2} & a_{N-1} & b_{N-1} \\
-        0   &     &        &       0 & b_{N-1} & a_N
+         a_1 & -b_1 &        &          &          &          & 0 \\
+        -b_1 &  a_2 &   -b_2 &          &          &          & \\
+             & -b_2 &    a_3 &    -b_3  &          &          &  \\
+             &      & \ddots &   \ddots &   \ddots &          &  \\
+             &      &        &   \ddots &   \ddots &   \ddots &  \\
+             &      &        &          & -b_{N-2} &  a_{N-1} & -b_{N-1} \\
+        0    &      &        &          &          & -b_{N-1} & a_N
     \end{bmatrix}
     \begin{bmatrix}
-        \lambda_1 \\ \lambda_2 \\ \vdots \\ \lambda_i \\ \vdots \\ \lambda_N
+        \lambda_1 \\ \lambda_2 \\ \lambda_3 \\ \vdots \\ \lambda_i \\ \vdots \\ \lambda_N
     \end{bmatrix}
     =
     \begin{bmatrix}
-        \abs{\dot{\va{x}}_{0,1}^\prime}^2 - \va{x}_{0,1}^\prime \vdot \qty(\va{g}^\prime +\ddot{\va{x}}_0^\prime) \\
-        \abs{\dot{\va{x}}_{1,2}^\prime}^2 \\
-        \vdots \\
-        \abs{\dot{\va{x}}_{i-1,i}^\prime}^2 \\
-        \vdots \\
-        \abs{\dot{\va{x}}_{N-1,N}^\prime}^2 \\
+        c_1 \\ c_2 \\ c_3 \\ \vdots \\ c_i \\ \vdots \\ c_N
     \end{bmatrix}
 \end{align}
 ただし
 \begin{align}
-    c &= 2\frac{\abs{\va{x}_{0,1}^\prime}^2}{m_1^\prime} \\
-    a_i &= 2\abs{\va{x}_{i-1,i}^\prime}^2 \qty(\frac{1}{m_i^\prime} + \frac{1}{m_{i-1}^\prime}) \\
-    b_i &= -2\frac{\va{x}_{i-1,i}^\prime \vdot \va{x}_{i,i+1}^\prime}{m_i^\prime}
+    a_1 &= 2\frac{\abs{\va{x}_{0,1}^\prime}^2}{m_1^\prime} \\
+    a_i &= 2\abs{\va{x}_{i-1,i}^\prime}^2 \qty(\frac{1}{m_i^\prime} + \frac{1}{m_{i-1}^\prime}) & (i>1)\\
+    b_i &= 2\frac{\va{x}_{i-1,i}^\prime \vdot \va{x}_{i,i+1}^\prime}{m_i^\prime} \\
+    c_1 &= \abs{\dot{\va{x}}_{0,1}^\prime}^2 - \va{x}_{0,1}^\prime \vdot \qty(\va{g}^\prime +\ddot{\va{x}}_0^\prime) \\
+    c_i &= \abs{\dot{\va{x}}_{i-1,i}^\prime}^2 & (i>1)
 \end{align}
-
+これは、例えばThomasのアルゴリズム\cite{thomas}で$O(N)$で解ける。
+今回向けにThomasのアルゴリズムを書き下しておく。
+まず連立方程式の1行目から
+\begin{align}
+    a_1 \lambda_1 - b_1 \lambda_2 &= c_1 \\
+    \rightarrow
+    \lambda_1 &= d_1 \lambda_2 + e_1
+\end{align}
+である。ここで
+\begin{align}
+    d_1 = \frac{b_1}{a_1} \\
+    e_1 = \frac{c_1}{a_1}
+\end{align}
+である。
+これを2行目に代入すると
+\begin{align}
+    & -b_1\qty(d_1 \lambda_2 + e_1) + a_2 \lambda_2 - b_2 \lambda_3 = c_2 \\
+    \rightarrow &
+    \lambda_2 = d_2\lambda_3 + e_2
+\end{align}
+ここで
+\begin{align}
+    d_2 = \frac{b_2}{a_2 - b_1 d_1} \\
+    e_2 = \frac{c_2 + b_1 e_1}{a_2 - b_1 d_1}
+\end{align}
+である。
+以下同様に$N-1$番目まで行い、そうして得られた$N-1$番目の式
+\begin{align}
+    \lambda_{N-1} = d_{N-1}\lambda_N + e_{N-1}
+\end{align}
+と、一番下の行の式
+\begin{align}
+    -b_{N-1} \lambda_{N-1} + a_N \lambda_N &= c_N
+\end{align}
+より$\lambda_N$を求めると
+\begin{align}
+    \lambda_N = \frac{c_N + b_{N-1} e_{N-1}}{a_N - b_{N-1} d_{N-1}}
+\end{align}
+となる。
+これを逆向きに代入していくことで$\lambda_i$が全てわかる。
 
 \bibliographystyle{plain}
 \bibliography{main.bib}
