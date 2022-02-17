@@ -105,3 +105,28 @@ impl Dynamics for Bezier4 {
             + self.p3 * (6.0 * t)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bezier() {
+        let x0 = vec3(1.0, 2.0, 3.0);
+        let v0 = vec3(0.0, 0.0, 0.0);
+        let x1 = vec3(-2.0, 4.0, 5.0);
+        let t0 = 3.0;
+        let t1 = 5.0;
+        let b1 = Bezier4::from_2points(x0, v0, x1, t0, t1);
+        assert_eq!(b1.x(t0), x0);
+        assert_eq!(b1.x(t1), x1);
+        assert_eq!(b1.v(t0), v0);
+
+        let x2 = vec3(-1.0, 3.0, 4.0);
+        let t2 = 6.0;
+        let b2 = Bezier4::from_2points(b1.x(t1), b1.v(t1), x2, t1, t2);
+        assert_eq!(b1.x(t1), b2.x(t1));
+        assert_eq!(b1.v(t1), b2.v(t1));
+        assert_eq!(b2.x(t2), x2);
+    }
+}

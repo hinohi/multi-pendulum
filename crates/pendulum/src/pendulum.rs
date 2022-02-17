@@ -8,7 +8,7 @@ use crate::dynamics::{Bezier4, Dynamics};
 #[derive(Debug)]
 pub struct Pendulum {
     g: Vector3<f64>,
-    length: Vec<f64>,
+    // length: Vec<f64>,
     mass: Vec<f64>,
     unit_time: f64,
     unit_length: f64,
@@ -33,10 +33,10 @@ impl Pendulum {
             unit_length = unit_length.min(*l);
             unit_mass += *m;
         }
-        let length = length_mass
-            .iter()
-            .map(|(l, _)| *l / unit_length)
-            .collect::<Vec<_>>();
+        // let length = length_mass
+        //     .iter()
+        //     .map(|(l, _)| *l / unit_length)
+        //     .collect::<Vec<_>>();
         let mass = length_mass
             .iter()
             .map(|(_, m)| *m / unit_mass)
@@ -44,7 +44,7 @@ impl Pendulum {
         let unit_time = (unit_length / g.magnitude()).sqrt();
         Ok(Pendulum {
             g: g.normalize(),
-            length,
+            // length,
             mass,
             unit_length,
             unit_time,
@@ -222,7 +222,7 @@ impl Eom for Pendulum {
         }
     }
 
-    fn correct(&self, t: f64, x: &mut [f64], _v: &mut [f64]) {
+    fn correct(&self, _t: f64, _x: &mut [f64], _v: &mut [f64]) {
         // let mut last_pos = self.root.x(t * self.unit_time) / self.unit_length;
         // for (i, &l) in self.length.iter().enumerate() {
         //     let i = i * 3;
