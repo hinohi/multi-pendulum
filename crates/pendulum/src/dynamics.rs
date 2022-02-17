@@ -1,5 +1,6 @@
-use cgmath::{vec3, Vector3};
 use std::fmt::Debug;
+
+use cgmath::{vec3, Vector3};
 
 pub trait Dynamics: Debug {
     fn x(&self, t: f64) -> Vector3<f64>;

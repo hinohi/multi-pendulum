@@ -3,7 +3,7 @@ use eom_sim::{Eom, Explicit, ModelSpec};
 use itertools::Itertools;
 use std::fmt::Debug;
 
-use crate::dynamics::{Dynamics, FixedPoint};
+use crate::dynamics::{Bezier4, Dynamics};
 
 #[derive(Debug)]
 pub struct Pendulum {
@@ -13,7 +13,7 @@ pub struct Pendulum {
     unit_time: f64,
     unit_length: f64,
     unit_mass: f64,
-    root: Box<dyn Dynamics>,
+    root: Bezier4,
 }
 
 impl Pendulum {
@@ -49,7 +49,7 @@ impl Pendulum {
             unit_length,
             unit_time,
             unit_mass,
-            root: Box::new(FixedPoint(vec3(0.0, 0.0, 0.0))),
+            root: Bezier4::default(),
         })
     }
 
@@ -82,7 +82,6 @@ impl Pendulum {
         v: &[Vector3<f64>],
     ) -> Vec<Vector3<f64>> {
         let n = x.len();
-        let t = t * self.unit_time; // restore dimension
 
         let x = {
             let mut xx = Vec::with_capacity(n);
@@ -142,15 +141,16 @@ impl Pendulum {
         ticker: &mut E,
         time_start: f64,
         time_end: f64,
-        root: Box<dyn Dynamics>,
+        root_start: Vector3<f64>,
+        root_velocity_start: Vector3<f64>,
+        root_end: Vector3<f64>,
         position: &mut [Vector3<f64>],
         velocity: &mut [Vector3<f64>],
-    ) -> f64 {
+    ) -> (f64, Vector3<f64>, Vector3<f64>) {
         if time_end <= time_start {
-            return time_start;
+            return (time_start, root_start, root_velocity_start);
         }
         assert_eq!(position.len(), velocity.len());
-        self.root = root;
         let n = position.len() * 3;
         let mut x = Vec::with_capacity(n);
         let mut v = Vec::with_capacity(n);
@@ -167,6 +167,15 @@ impl Pendulum {
 
         let mut t = time_start / self.unit_time;
         let until = time_end / self.unit_time;
+
+        self.root = Bezier4::from_2points(
+            root_start / self.unit_length,
+            root_velocity_start * self.unit_time / self.unit_length,
+            root_end,
+            t,
+            until,
+        );
+
         let dt = (until - t) / 1024.0;
         ticker.iterate_until(self, &mut t, &mut x, &mut v, dt, until);
 
@@ -183,7 +192,11 @@ impl Pendulum {
             p.z = v[i + 2] * (self.unit_length / self.unit_time);
         }
 
-        t * self.unit_time
+        (
+            t * self.unit_time,
+            self.root.x(t) * self.unit_length,
+            self.root.v(t) * self.unit_length / self.unit_time,
+        )
     }
 }
 
@@ -210,16 +223,16 @@ impl Eom for Pendulum {
     }
 
     fn correct(&self, t: f64, x: &mut [f64], _v: &mut [f64]) {
-        let mut last_pos = self.root.x(t);
-        for (i, &l) in self.length.iter().enumerate() {
-            let i = i * 3;
-            let pos = vec3(x[i], x[i + 1], x[i + 2]);
-            let pos = last_pos + (pos - last_pos).normalize_to(l);
-            x[i] = pos.x;
-            x[i + 1] = pos.y;
-            x[i + 2] = pos.z;
-            last_pos = pos;
-        }
+        // let mut last_pos = self.root.x(t * self.unit_time) / self.unit_length;
+        // for (i, &l) in self.length.iter().enumerate() {
+        //     let i = i * 3;
+        //     let pos = vec3(x[i], x[i + 1], x[i + 2]);
+        //     let pos = last_pos + (pos - last_pos).normalize_to(l);
+        //     x[i] = pos.x;
+        //     x[i + 1] = pos.y;
+        //     x[i + 2] = pos.z;
+        //     last_pos = pos;
+        // }
     }
 }
 

@@ -1,12 +1,12 @@
 use asset_utils::make_grid;
 use cgmath::{
-    perspective, vec3, vec4, Deg, InnerSpace, Matrix, Matrix3, Matrix4, Quaternion, Rotation,
-    Rotation3, SquareMatrix, Vector3,
+    perspective, vec3, vec4, Deg, InnerSpace, Matrix, Matrix3, Matrix4, MetricSpace, Quaternion,
+    Rotation, Rotation3, SquareMatrix, Vector3,
 };
 use eom_sim::runge_kutta::RK4;
 use itertools::Itertools;
-use num_traits::One;
-use pendulum::{FixedPoint, Pendulum};
+use num_traits::{One, Zero};
+use pendulum::Pendulum;
 use wasm_bindgen::prelude::*;
 use web_sys::{console, HtmlCanvasElement};
 
@@ -33,9 +33,11 @@ pub struct App {
     floor: Object,
     // UI
     quaternion: Quaternion<f64>,
+    grab: bool,
     // physics
     pendulum: Pendulum,
-    root: Vector3<f64>,
+    root_position: Vector3<f64>,
+    root_velocity: Vector3<f64>,
     position: Vec<Vector3<f64>>,
     velocity: Vec<Vector3<f64>>,
     last_tick: Option<f64>,
@@ -64,8 +66,8 @@ impl App {
         };
 
         let g = vec3(0.0, 9.8, 0.0);
-        let root = vec3(0.0, 0.0, 0.0);
-        let length_mass = vec![(0.1, 1.0), (0.1, 2.0), (0.3, 1.0)];
+        let root = Vector3::zero();
+        let length_mass = vec![(0.3, 1.0); 4];
         let pendulum = Pendulum::new(g, &length_mass).map_err(|s| JsValue::from_str(&s))?;
         let mut position = Vec::with_capacity(length_mass.len());
         let mut direction = vec3(1.0, 0.0, 0.0).normalize();
@@ -74,7 +76,6 @@ impl App {
             position.push(last + direction * l);
             direction = Matrix3::from_angle_y(Deg(30.0)) * direction;
         }
-        let velocity = vec![vec3(0.0, 0.0, 0.0); length_mass.len()];
 
         Ok(App {
             // GL
@@ -84,11 +85,13 @@ impl App {
             floor,
             // UI
             quaternion: Quaternion::one(),
+            grab: false,
             // physics
             pendulum,
-            root,
+            root_position: root,
+            root_velocity: Vector3::zero(),
             position,
-            velocity,
+            velocity: vec![Vector3::zero(); length_mass.len()],
             last_tick: None,
         })
     }
@@ -101,22 +104,16 @@ impl App {
 
         let t = timestamp_ms / 1000.0;
         let last_tick = self.last_tick.replace(t).unwrap_or(t);
+        if t == last_tick {
+            return Ok(());
+        }
 
-        let new_tick = self.pendulum.tick(
-            &mut RK4::new(),
-            last_tick,
-            t,
-            Box::new(FixedPoint(self.root)),
-            &mut self.position,
-            &mut self.velocity,
-        );
-        self.last_tick.replace(new_tick);
+        let m = Matrix3::from(self.quaternion).transpose();
 
         if let Some((x, y)) = mouse.drag(MouseButton::Middle) {
             if x != 0 || y != 0 {
                 let x = x as f64 / width as f64;
                 let y = y as f64 / width as f64;
-                let m = Matrix3::from(self.quaternion).transpose();
                 let axis = m.y * x + m.x * y;
                 self.quaternion = self.quaternion
                     * Quaternion::from_axis_angle(
@@ -129,8 +126,55 @@ impl App {
         let projection_matrix = perspective(Deg(60.0), width as f64 / height as f64, 0.1, 10000.0);
         let view_matrix =
             Matrix4::from_translation(vec3(0.0, 0.0, -1.5)) * Matrix4::from(self.quaternion);
+        let view_projection_matrix = projection_matrix * view_matrix;
+
+        let root_end = if let Some((x, y)) = mouse.click(MouseButton::Left) {
+            let (x, y) = (
+                x as f64 / width as f64 * 2.0 - 1.0,
+                y as f64 / height as f64 * 2.0 - 1.0,
+            );
+            let root_in_display = view_projection_matrix
+                * vec4(
+                    self.root_position.x,
+                    self.root_position.y,
+                    self.root_position.z,
+                    1.0,
+                );
+            let click_in_model = {
+                let v = view_projection_matrix.invert().unwrap()
+                    * vec4(x, y, root_in_display.z, root_in_display.w);
+                vec3(v.x, v.y, v.z)
+            };
+            if self.root_position.distance2(click_in_model) <= 1e-3 {
+                self.grab = true;
+            }
+            if self.grab {
+                click_in_model
+            } else {
+                self.root_position
+            }
+        } else {
+            self.grab = false;
+            self.root_position
+        };
+
+        let (new_tick, new_root_position, new_root_velocity) = self.pendulum.tick(
+            &mut RK4::new(),
+            last_tick,
+            t,
+            self.root_position,
+            self.root_velocity,
+            root_end,
+            &mut self.position,
+            &mut self.velocity,
+        );
+        log(format!("{:?}", new_root_position - self.root_position));
+        self.last_tick = Some(new_tick);
+        self.root_position = new_root_position;
+        self.root_velocity = new_root_velocity;
+
         self.backend.draw(
-            projection_matrix * view_matrix,
+            view_projection_matrix,
             vec3(1.0, 1.0, 0.0),
             &self.calc_objects_matrix(),
         );
@@ -155,7 +199,7 @@ impl App {
 
 impl App {
     fn calc_objects_matrix(&self) -> [(&Object, Vec<Matrix4<f64>>); 3] {
-        let mut position = vec![self.root];
+        let mut position = vec![self.root_position];
         position.extend_from_slice(&self.position);
 
         let global_scale = 0.05;

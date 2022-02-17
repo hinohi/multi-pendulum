@@ -52,6 +52,10 @@ impl Mouse {
         self.current_position.replace((x, y));
     }
 
+    pub fn click(&self, button: MouseButton) -> Option<(i32, i32)> {
+        self.button_downed[button as usize]
+    }
+
     pub fn drag(&self, button: MouseButton) -> Option<(i32, i32)> {
         if self.button_downed[button as usize].is_none() {
             return None;
