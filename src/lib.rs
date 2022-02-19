@@ -70,7 +70,7 @@ impl App {
         let length_mass = vec![(0.3, 1.0); 4];
         let pendulum = Pendulum::new(g, &length_mass).map_err(|s| JsValue::from_str(&s))?;
         let mut position = Vec::with_capacity(length_mass.len());
-        let mut direction = vec3(1.0, 0.0, 0.0).normalize();
+        let mut direction = vec3(0.0, -1.0, 0.0).normalize();
         for &(l, _) in length_mass.iter() {
             let last = position.last().copied().unwrap_or(root);
             position.push(last + direction * l);
@@ -123,15 +123,15 @@ impl App {
             }
         }
 
-        let projection_matrix = perspective(Deg(60.0), width as f64 / height as f64, 0.1, 10000.0);
+        let projection_matrix = perspective(Deg(90.0), width as f64 / height as f64, 0.1, 10000.0);
         let view_matrix =
             Matrix4::from_translation(vec3(0.0, 0.0, -1.5)) * Matrix4::from(self.quaternion);
         let view_projection_matrix = projection_matrix * view_matrix;
 
-        let root_end = if let Some((x, y)) = mouse.click(MouseButton::Left) {
+        let disp2model = |(x, y)| -> Vector3<f64> {
             let (x, y) = (
                 x as f64 / width as f64 * 2.0 - 1.0,
-                y as f64 / height as f64 * 2.0 - 1.0,
+                1.0 - y as f64 / height as f64 * 2.0,
             );
             let root_in_display = view_projection_matrix
                 * vec4(
@@ -140,16 +140,19 @@ impl App {
                     self.root_position.z,
                     1.0,
                 );
-            let click_in_model = {
-                let v = view_projection_matrix.invert().unwrap()
-                    * vec4(x, y, root_in_display.z, root_in_display.w);
-                vec3(v.x, v.y, v.z)
-            };
+            let v = view_projection_matrix.invert().unwrap()
+                * vec4(x, y, root_in_display.z, root_in_display.w);
+            // I don't know why this √2 factor needed.
+            vec3(v.x, v.y, v.z) * std::f64::consts::SQRT_2
+        };
+
+        let root_end = if let Some(p) = mouse.click(MouseButton::Left) {
+            let click_in_model = disp2model(p);
             if self.root_position.distance2(click_in_model) <= 1e-3 {
                 self.grab = true;
             }
             if self.grab {
-                click_in_model
+                disp2model(mouse.current_position().unwrap_or(p))
             } else {
                 self.root_position
             }
@@ -168,7 +171,6 @@ impl App {
             &mut self.position,
             &mut self.velocity,
         );
-        log(format!("{:?}", new_root_position - self.root_position));
         self.last_tick = Some(new_tick);
         self.root_position = new_root_position;
         self.root_velocity = new_root_velocity;

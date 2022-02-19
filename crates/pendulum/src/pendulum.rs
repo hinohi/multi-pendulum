@@ -160,9 +160,9 @@ impl Pendulum {
             x.push(p.z / self.unit_length);
         }
         for p in velocity.iter() {
-            v.push(p.x * (self.unit_time / self.unit_length));
-            v.push(p.y * (self.unit_time / self.unit_length));
-            v.push(p.z * (self.unit_time / self.unit_length));
+            v.push(p.x * self.unit_time / self.unit_length);
+            v.push(p.y * self.unit_time / self.unit_length);
+            v.push(p.z * self.unit_time / self.unit_length);
         }
 
         let mut t = time_start / self.unit_time;
@@ -171,12 +171,12 @@ impl Pendulum {
         self.root = Bezier4::from_2points(
             root_start / self.unit_length,
             root_velocity_start * self.unit_time / self.unit_length,
-            root_end,
+            root_end / self.unit_length,
             t,
             until,
         );
 
-        let dt = (until - t) / 1024.0;
+        let dt = (until - t) / 2.0f64.powi(10);
         ticker.iterate_until(self, &mut t, &mut x, &mut v, dt, until);
 
         for (i, p) in position.iter_mut().enumerate() {
