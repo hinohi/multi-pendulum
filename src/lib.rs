@@ -128,43 +128,46 @@ impl App {
             Matrix4::from_translation(vec3(0.0, 0.0, -1.5)) * Matrix4::from(self.quaternion);
         let view_projection_matrix = projection_matrix * view_matrix;
 
-        // let disp2model = |(x, y)| -> Vector3<f64> {
-        //     let (x, y) = (
-        //         x as f64 / width as f64 * 2.0 - 1.0,
-        //         1.0 - y as f64 / height as f64 * 2.0,
-        //     );
-        //     let root_in_display = view_projection_matrix
-        //         * vec4(
-        //             self.root_position.x,
-        //             self.root_position.y,
-        //             self.root_position.z,
-        //             1.0,
-        //         );
-        //     let v = view_projection_matrix.invert().unwrap()
-        //         * vec4(x, y, root_in_display.z, root_in_display.w);
-        //     // I don't know why this √2 factor needed.
-        //     vec3(v.x, v.y, v.z) * std::f64::consts::SQRT_2
-        // };
+        let disp2model = |(x, y)| -> Vector3<f64> {
+            let (x, y) = (
+                x as f64 / width as f64 * 2.0 - 1.0,
+                1.0 - y as f64 / height as f64 * 2.0,
+            );
+            let root_in_display = view_projection_matrix
+                * vec4(
+                    self.root_position.x,
+                    self.root_position.y,
+                    self.root_position.z,
+                    1.0,
+                );
+            let v = view_projection_matrix.invert().unwrap()
+                * vec4(x, y, root_in_display.z, root_in_display.w);
+            // I don't know why this √2 factor needed.
+            vec3(v.x, v.y, v.z) * std::f64::consts::SQRT_2
+        };
 
-        // let root_end = if let Some(p) = mouse.click(MouseButton::Left) {
-        //     let click_in_model = disp2model(p);
-        //     if self.root_position.distance2(click_in_model) <= 1e-3 {
-        //         self.grab = true;
-        //     }
-        //     if self.grab {
-        //         disp2model(mouse.current_position().unwrap_or(p))
-        //     } else {
-        //         self.root_position
-        //     }
-        // } else {
-        //     self.grab = false;
-        //     self.root_position
-        // };
+        let root_end = if let Some(p) = mouse.click(MouseButton::Left) {
+            let click_in_model = disp2model(p);
+            if self.root_position.distance2(click_in_model) <= 1e-3 {
+                self.grab = true;
+            }
+            if self.grab {
+                disp2model(mouse.current_position().unwrap_or(p))
+            } else {
+                self.root_position
+            }
+        } else {
+            self.grab = false;
+            self.root_position
+        };
 
         let (new_tick, new_root_position, new_root_velocity) = self.pendulum.tick(
             &mut RK4::new(),
             last_tick,
             t,
+            self.root_position,
+            self.root_velocity,
+            root_end,
             &mut self.position,
             &mut self.velocity,
         );

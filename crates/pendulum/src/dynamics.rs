@@ -58,7 +58,7 @@ impl Bezier4 {
         t1: f64,
     ) -> Bezier4 {
         // P'(0) = v0
-        let p1 = v0 / 3.0 + x0;
+        let p1 = v0 + x0 * 3.0;
         // minimize jerk
         let p2 = v0 + x0 * 2.0 + x1;
         Bezier4 {
@@ -76,8 +76,8 @@ impl Dynamics for Bezier4 {
         let t = self.ut.t(t);
         let s = 1.0 - t;
         self.p0 * (s * s * s)
-            + self.p1 * (3.0 * s * s * t)
-            + self.p2 * (3.0 * s * t * t)
+            + self.p1 * (s * s * t)
+            + self.p2 * (s * t * t)
             + self.p3 * (t * t * t)
     }
 
@@ -85,7 +85,7 @@ impl Dynamics for Bezier4 {
         let t = self.ut.t(t);
         let s = 1.0 - t;
         self.p0 * (-3.0 * s * s)
-            + self.p1 * (-3.0 * s * (3.0 * t - 1.0))
+            + self.p1 * (s * (1.0 - 3.0 * t))
             + self.p2 * (t * (2.0 - 3.0 * t))
             + self.p3 * (3.0 * t * t)
     }
@@ -94,7 +94,7 @@ impl Dynamics for Bezier4 {
         let t = self.ut.t(t);
         let s = 1.0 - t;
         self.p0 * (6.0 * s)
-            + self.p1 * (18.0 * t - 12.0)
+            + self.p1 * (6.0 * t - 4.0)
             + self.p2 * (2.0 - 6.0 * t)
             + self.p3 * (6.0 * t)
     }
