@@ -34,8 +34,7 @@ pub struct Bezier4 {
     p1: Vector3<f64>,
     p2: Vector3<f64>,
     p3: Vector3<f64>,
-    t0: f64,
-    dt: f64,
+    ut: UniformT,
 }
 
 impl Default for Bezier4 {
@@ -45,8 +44,7 @@ impl Default for Bezier4 {
             p1: vec3(0.0, 0.0, 0.0),
             p2: vec3(0.0, 0.0, 0.0),
             p3: vec3(0.0, 0.0, 0.0),
-            t0: 0.0,
-            dt: 1.0,
+            ut: UniformT::new(0.0, 1.0),
         }
     }
 }
@@ -68,19 +66,14 @@ impl Bezier4 {
             p1,
             p2,
             p3: x1,
-            t0,
-            dt: t1 - t0,
+            ut: UniformT::new(t0, t1),
         }
-    }
-
-    fn t(&self, t: f64) -> f64 {
-        (t - self.t0) / self.dt
     }
 }
 
 impl Dynamics for Bezier4 {
     fn x(&self, t: f64) -> Vector3<f64> {
-        let t = self.t(t);
+        let t = self.ut.t(t);
         let s = 1.0 - t;
         self.p0 * (s * s * s)
             + self.p1 * (3.0 * s * s * t)
@@ -89,7 +82,7 @@ impl Dynamics for Bezier4 {
     }
 
     fn v(&self, t: f64) -> Vector3<f64> {
-        let t = self.t(t);
+        let t = self.ut.t(t);
         let s = 1.0 - t;
         self.p0 * (-3.0 * s * s)
             + self.p1 * (-3.0 * s * (3.0 * t - 1.0))
@@ -98,11 +91,71 @@ impl Dynamics for Bezier4 {
     }
 
     fn a(&self, t: f64) -> Vector3<f64> {
-        let t = self.t(t);
-        self.p0 * (6.0 - 6.0 * t)
+        let t = self.ut.t(t);
+        let s = 1.0 - t;
+        self.p0 * (6.0 * s)
             + self.p1 * (18.0 * t - 12.0)
             + self.p2 * (2.0 - 6.0 * t)
             + self.p3 * (6.0 * t)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Oscillate1d {
+    a: Vector3<f64>,
+    b: Vector3<f64>,
+    omega: f64,
+    pub theta0: f64,
+}
+
+impl Oscillate1d {
+    pub fn new(a: Vector3<f64>, b: Vector3<f64>, omega: f64, theta0: f64) -> Oscillate1d {
+        Oscillate1d {
+            a,
+            b,
+            omega,
+            theta0,
+        }
+    }
+
+    fn sin_cos(&self, t: f64) -> (f64, f64) {
+        let theta = self.omega * (t - self.theta0);
+        theta.sin_cos()
+    }
+}
+
+impl Dynamics for Oscillate1d {
+    fn x(&self, t: f64) -> Vector3<f64> {
+        let (sin, cos) = self.sin_cos(t);
+        self.a * cos + self.b * sin
+    }
+
+    fn v(&self, t: f64) -> Vector3<f64> {
+        let (sin, cos) = self.sin_cos(t);
+        (-self.a * sin + self.b * cos) * self.omega
+    }
+
+    fn a(&self, t: f64) -> Vector3<f64> {
+        let (sin, cos) = self.sin_cos(t);
+        (-self.a * cos - self.b * sin) * self.omega * self.omega
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+struct UniformT {
+    t0: f64,
+    dt: f64,
+}
+
+impl UniformT {
+    #[inline]
+    fn new(t0: f64, t1: f64) -> UniformT {
+        UniformT { t0, dt: t1 - t0 }
+    }
+
+    #[inline]
+    fn t(&self, t: f64) -> f64 {
+        (t - self.t0) / self.dt
     }
 }
 

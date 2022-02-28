@@ -3,7 +3,7 @@ use eom_sim::{Eom, Explicit, ModelSpec};
 use itertools::Itertools;
 use std::fmt::Debug;
 
-use crate::dynamics::{Bezier4, Dynamics};
+use crate::dynamics::{Dynamics, Oscillate1d};
 
 #[derive(Debug)]
 pub struct Pendulum {
@@ -13,7 +13,8 @@ pub struct Pendulum {
     unit_time: f64,
     unit_length: f64,
     unit_mass: f64,
-    root: Bezier4,
+    root: Oscillate1d,
+    t0_set: bool,
 }
 
 impl Pendulum {
@@ -49,7 +50,8 @@ impl Pendulum {
             unit_length,
             unit_time,
             unit_mass,
-            root: Bezier4::default(),
+            root: Oscillate1d::new(vec3(0.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0), 0.5, 0.0),
+            t0_set: false,
         })
     }
 
@@ -141,14 +143,18 @@ impl Pendulum {
         ticker: &mut E,
         time_start: f64,
         time_end: f64,
-        root_start: Vector3<f64>,
-        root_velocity_start: Vector3<f64>,
-        root_end: Vector3<f64>,
         position: &mut [Vector3<f64>],
         velocity: &mut [Vector3<f64>],
     ) -> (f64, Vector3<f64>, Vector3<f64>) {
+        let mut t = time_start / self.unit_time;
+        let until = time_end / self.unit_time;
+
         if time_end <= time_start {
-            return (time_start, root_start, root_velocity_start);
+            return (
+                time_start,
+                self.root.x(t) * self.unit_length,
+                self.root.v(t) * self.unit_length / self.unit_time,
+            );
         }
         assert_eq!(position.len(), velocity.len());
         let n = position.len() * 3;
@@ -165,16 +171,10 @@ impl Pendulum {
             v.push(p.z * self.unit_time / self.unit_length);
         }
 
-        let mut t = time_start / self.unit_time;
-        let until = time_end / self.unit_time;
-
-        self.root = Bezier4::from_2points(
-            root_start / self.unit_length,
-            root_velocity_start * self.unit_time / self.unit_length,
-            root_end / self.unit_length,
-            t,
-            until,
-        );
+        if !self.t0_set {
+            self.t0_set = true;
+            self.root.theta0 = t;
+        }
 
         let dt = (until - t) / 2.0f64.powi(10);
         ticker.iterate_until(self, &mut t, &mut x, &mut v, dt, until);
