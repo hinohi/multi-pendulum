@@ -57,16 +57,17 @@ impl Bezier4 {
         t0: f64,
         t1: f64,
     ) -> Bezier4 {
+        let ut = UniformT::new(t0, t1);
         // P'(0) = v0
-        let p1 = v0 + x0 * 3.0;
+        let p1 = v0 * ut.dt + x0 * 3.0;
         // minimize jerk
-        let p2 = v0 + x0 * 2.0 + x1;
+        let p2 = v0 * ut.dt + x0 * 2.0 + x1;
         Bezier4 {
             p0: x0,
             p1,
             p2,
             p3: x1,
-            ut: UniformT::new(t0, t1),
+            ut,
         }
     }
 }
@@ -84,19 +85,21 @@ impl Dynamics for Bezier4 {
     fn v(&self, t: f64) -> Vector3<f64> {
         let t = self.ut.t(t);
         let s = 1.0 - t;
-        self.p0 * (-3.0 * s * s)
+        let v = self.p0 * (-3.0 * s * s)
             + self.p1 * (s * (1.0 - 3.0 * t))
             + self.p2 * (t * (2.0 - 3.0 * t))
-            + self.p3 * (3.0 * t * t)
+            + self.p3 * (3.0 * t * t);
+        v / self.ut.dt
     }
 
     fn a(&self, t: f64) -> Vector3<f64> {
         let t = self.ut.t(t);
         let s = 1.0 - t;
-        self.p0 * (6.0 * s)
+        let a = self.p0 * (6.0 * s)
             + self.p1 * (6.0 * t - 4.0)
             + self.p2 * (2.0 - 6.0 * t)
-            + self.p3 * (6.0 * t)
+            + self.p3 * (6.0 * t);
+        a / self.ut.dt / self.ut.dt
     }
 }
 
