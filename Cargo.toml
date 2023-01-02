@@ -17,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 cgmath = "0.18"
 bytemuck = { version = "1.7", features = ["derive"] }
 itertools = "0.10"
-memoffset = "0.6"
+memoffset = "0.8"
 num-traits = "0.2"
 
 glow = "0.11"
